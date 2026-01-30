@@ -190,6 +190,318 @@ model = model.merge_and_unload()
 model.save_pretrained("./merged_model")
 ```
 
+**5. DPO（Direct Preference Optimization）实现**
+
+```python
+from trl import DPOTrainer
+from peft import LoraConfig
+
+# DPO 数据集格式
+# 每条数据包含：prompt, chosen（偏好回答）, rejected（不偏好回答）
+
+# 配置 LoRA 用于 DPO
+lora_config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM"
+)
+
+# DPO 训练配置
+training_args = TrainingArguments(
+    output_dir="./dpo_model",
+    num_train_epochs=1,
+    per_device_train_batch_size=2,
+    gradient_accumulation_steps=8,
+    learning_rate=5e-7,  # DPO 通常使用更小的学习率
+    warmup_steps=100,
+    logging_steps=10,
+    save_steps=500,
+    fp16=True,
+    optim="paged_adamw_8bit",
+    beta=0.1  # DPO 温度参数，控制与参考模型的偏离程度
+)
+
+# 初始化 DPO 训练器
+dpo_trainer = DPOTrainer(
+    model=model,
+    ref_model=ref_model,  # 参考模型（通常是 SFT 后的模型）
+    args=training_args,
+    train_dataset=dpo_dataset,
+    tokenizer=tokenizer,
+    peft_config=lora_config,
+    max_length=512,
+    max_prompt_length=256
+)
+
+# 开始训练
+dpo_trainer.train()
+dpo_trainer.save_model("./dpo_model")
+```
+
+**6. 多模态微调（LLaVA 风格）**
+
+```python
+# 多模态指令微调数据格式
+{
+    "id": "image_001",
+    "image": "path/to/image.jpg",
+    "conversations": [
+        {
+            "from": "human",
+            "value": "<image>\n描述这张图片的内容"
+        },
+        {
+            "from": "gpt",
+            "value": "这张图片展示了一座雪山，山顶覆盖着皑皑白雪..."
+        }
+    ]
+}
+
+# 使用 LLaVA 训练脚本
+# https://github.com/haotian-liu/LLaVA
+```
+
+**7. PPO（Proximal Policy Optimization）训练**
+
+```python
+from trl import PPOTrainer, PPOConfig
+from transformers import AutoModelForCausalLMWithValueHead
+
+# 初始化带价值头的模型
+model = AutoModelForCausalLMWithValueHead.from_pretrained(
+    "./sft_model",
+    peft_config=lora_config
+)
+
+# PPO 配置
+ppo_config = PPOConfig(
+    model_name="./sft_model",
+    learning_rate=1.41e-5,
+    batch_size=256,
+    mini_batch_size=64,
+    gradient_accumulation_steps=1,
+    optimize_cuda_cache=True,
+    early_stopping=False,
+    target_kl=0.1,
+    ppo_epochs=4,
+    seed=42,
+)
+
+# 初始化 PPO 训练器
+ppo_trainer = PPOTrainer(
+    config=ppo_config,
+    model=model,
+    ref_model=ref_model,
+    tokenizer=tokenizer,
+    dataset=dataset,
+    data_collator=collator
+)
+
+# 训练循环
+for epoch in range(ppo_config.ppo_epochs):
+    for batch in ppo_trainer.dataloader:
+        queries = batch["query"]
+        
+        # 生成回答
+        response_tensors = ppo_trainer.generate(queries)
+        
+        # 使用奖励模型打分
+        rewards = reward_model(response_tensors)
+        
+        # PPO 更新
+        stats = ppo_trainer.step(queries, response_tensors, rewards)
+        ppo_trainer.log_stats(stats, batch, rewards)
+```
+
+**8. 奖励模型训练**
+
+```python
+from transformers import AutoModelForSequenceClassification
+
+# 初始化奖励模型
+reward_model = AutoModelForSequenceClassification.from_pretrained(
+    "meta-llama/Llama-2-7b-hf",
+    num_labels=1,  # 回归任务
+    torch_dtype=torch.bfloat16
+)
+
+# 奖励模型训练配置
+training_args = TrainingArguments(
+    output_dir="./reward_model",
+    num_train_epochs=1,
+    per_device_train_batch_size=4,
+    learning_rate=1e-5,
+    warmup_ratio=0.1,
+    logging_steps=10,
+    evaluation_strategy="steps",
+    eval_steps=500,
+    save_steps=1000
+)
+
+# 训练奖励模型
+trainer = Trainer(
+    model=reward_model,
+    args=training_args,
+    train_dataset=preference_dataset,
+    eval_dataset=eval_dataset,
+    compute_metrics=compute_metrics
+)
+trainer.train()
+```
+
+**9. 微调数据集构建工具**
+
+```python
+# 使用 Self-Instruct 方法生成指令数据
+# https://github.com/tatsu-lab/stanford_alpaca
+
+import json
+import random
+from openai import OpenAI
+
+client = OpenAI()
+
+# 种子任务
+seed_tasks = [
+    "解释什么是机器学习",
+    "写一个Python函数计算斐波那契数列",
+    "翻译以下句子：Hello World"
+]
+
+# 生成新指令
+def generate_instruction(seed_task: str) -> dict:
+    """基于种子任务生成新的指令-输出对"""
+    
+    # 构建提示词
+    prompt = f"""基于以下示例，生成一个新的指令-输出对。
+
+示例：
+指令：{seed_task}
+输出：[对应的输出]
+
+请生成一个全新的指令（与示例不同），并提供相应的输出。
+
+指令："""
+    
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "你是一个帮助生成训练数据的助手。"},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.8
+    )
+    
+    # 解析生成的内容
+    content = response.choices[0].message.content
+    # 提取指令和输出
+    lines = content.strip().split('\n')
+    instruction = lines[0].replace("指令：", "").strip()
+    output = '\n'.join(lines[2:]).replace("输出：", "").strip()
+    
+    return {
+        "instruction": instruction,
+        "input": "",
+        "output": output
+    }
+
+# 批量生成
+dataset = []
+for seed in seed_tasks:
+    for _ in range(10):  # 每个种子生成10个新指令
+        try:
+            new_item = generate_instruction(seed)
+            dataset.append(new_item)
+        except Exception as e:
+            print(f"生成失败: {e}")
+
+# 保存数据集
+with open("generated_instructions.json", "w", encoding="utf-8") as f:
+    json.dump(dataset, f, ensure_ascii=False, indent=2)
+```
+
+**10. 微调效果评估**
+
+```python
+# 使用 GPT-4 作为评估器
+from openai import OpenAI
+import json
+
+client = OpenAI()
+
+def evaluate_response(instruction: str, output: str, expected: str) -> dict:
+    """使用 GPT-4 评估模型输出质量"""
+    
+    eval_prompt = f"""评估以下模型输出的质量。
+
+指令：{instruction}
+
+模型输出：{output}
+
+参考答案：{expected}
+
+请从以下维度评分（1-5分）：
+1. 准确性：输出内容是否正确
+2. 完整性：是否覆盖所有要点
+3. 流畅性：语言是否自然流畅
+4. 有用性：对用户是否有帮助
+
+以 JSON 格式返回评分和理由：
+{{
+    "accuracy": 分数,
+    "completeness": 分数,
+    "fluency": 分数,
+    "helpfulness": 分数,
+    "overall": 平均分,
+    "reasoning": "评价理由"
+}}"""
+    
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "你是一个严格的模型评估专家。"},
+            {"role": "user", "content": eval_prompt}
+        ],
+        temperature=0.3
+    )
+    
+    # 解析 JSON 响应
+    result = response.choices[0].message.content
+    try:
+        return json.loads(result)
+    except:
+        return {"error": "解析失败", "raw": result}
+
+# 批量评估
+def batch_evaluate(test_data: list) -> dict:
+    """评估整个测试集"""
+    results = []
+    for item in test_data:
+        score = evaluate_response(
+            item["instruction"],
+            item["model_output"],
+            item["expected"]
+        )
+        results.append(score)
+    
+    # 计算平均分数
+    avg_scores = {
+        "accuracy": sum(r["accuracy"] for r in results) / len(results),
+        "completeness": sum(r["completeness"] for r in results) / len(results),
+        "fluency": sum(r["fluency"] for r in results) / len(results),
+        "helpfulness": sum(r["helpfulness"] for r in results) / len(results),
+        "overall": sum(r["overall"] for r in results) / len(results)
+    }
+    
+    return {
+        "average_scores": avg_scores,
+        "detailed_results": results
+    }
+```
+
 ### 最佳实践
 
 **1. 超参数调优**
@@ -251,6 +563,143 @@ mixed_dataset = original_data.sample(0.1) + new_domain_data
 # 定期混合原始任务样本
 ```
 
+**5. 模型合并技术**
+
+```python
+# 使用 MergeKit 合并多个 LoRA 适配器
+# https://github.com/arcee-ai/mergekit
+
+# 线性合并
+mergekit-yaml config.yaml ./merged_model
+
+# 配置示例 (config.yaml)
+# models:
+#   - model: model_a
+#     parameters:
+#       weight: 0.6
+#   - model: model_b
+#     parameters:
+#       weight: 0.4
+# merge_method: linear
+```
+
+**6. 持续预训练（Continual Pre-training）**
+
+```python
+# 针对特定领域进行持续预训练
+# 适用于需要学习大量领域知识的场景
+
+from transformers import DataCollatorForLanguageModeling
+
+# 准备领域语料
+domain_corpus = load_dataset("text", data_files="domain_corpus.txt")
+
+# 配置 MLM 数据整理器
+data_collator = DataCollatorForLanguageModeling(
+    tokenizer=tokenizer,
+    mlm=True,  # 掩码语言建模
+    mlm_probability=0.15  # 15% 的 token 被掩码
+)
+
+# 使用更大的学习率和更长的训练步数
+training_args = TrainingArguments(
+    output_dir="./continual_pretrained",
+    num_train_epochs=1,
+    per_device_train_batch_size=8,
+    learning_rate=1e-5,  # 比微调更大的学习率
+    warmup_steps=1000,
+    save_steps=10000,
+    logging_steps=100
+)
+
+# 训练
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized_dataset,
+    data_collator=data_collator
+)
+trainer.train()
+```
+
+**7. 数据增强策略**
+
+```python
+# 使用 back-translation 进行数据增强
+from transformers import pipeline
+
+# 初始化翻译模型
+translator_en_zh = pipeline("translation", model="Helsinki-NLP/opus-mt-en-zh")
+translator_zh_en = pipeline("translation", model="Helsinki-NLP/opus-mt-zh-en")
+
+def back_translate(text: str, src_lang: str = "zh") -> str:
+    """回译数据增强"""
+    if src_lang == "zh":
+        # 中文 -> 英文 -> 中文
+        en_text = translator_zh_en(text)[0]["translation_text"]
+        back_text = translator_en_zh(en_text)[0]["translation_text"]
+    else:
+        # 英文 -> 中文 -> 英文
+        zh_text = translator_en_zh(text)[0]["translation_text"]
+        back_text = translator_zh_en(zh_text)[0]["translation_text"]
+    return back_text
+
+# 使用 EDA（Easy Data Augmentation）
+import random
+
+def eda_augment(text: str, n_sr: int = 2, n_ri: int = 2) -> list:
+    """
+    Easy Data Augmentation
+    - SR: 同义词替换
+    - RI: 随机插入
+    """
+    augmented = [text]
+    
+    # 同义词替换
+    for _ in range(n_sr):
+        words = text.split()
+        idx = random.randint(0, len(words) - 1)
+        # 替换为同义词（需要预定义同义词词典）
+        # words[idx] = synonym
+        augmented.append(" ".join(words))
+    
+    return augmented
+```
+
+**8. 混合精度训练优化**
+
+```python
+# DeepSpeed ZeRO 配置
+# ds_config.json
+{
+    "bf16": {
+        "enabled": true
+    },
+    "zero_optimization": {
+        "stage": 2,
+        "offload_optimizer": {
+            "device": "cpu",
+            "pin_memory": true
+        },
+        "allgather_partitions": true,
+        "allgather_bucket_size": 2e8,
+        "overlap_comm": true,
+        "reduce_scatter": true,
+        "reduce_bucket_size": 2e8,
+        "contiguous_gradients": true
+    },
+    "train_batch_size": "auto",
+    "train_micro_batch_size_per_gpu": "auto",
+    "gradient_accumulation_steps": "auto"
+}
+
+# 使用 DeepSpeed 训练
+from accelerate import Accelerator
+
+accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin)
+model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloader)
+```
+
 ### 常见陷阱
 
 **1. 数据泄露**
@@ -273,6 +722,26 @@ mixed_dataset = original_data.sample(0.1) + new_domain_data
 - ❌ 过度量化导致效果下降
 - ✅ 8-bit 通常是精度与效率的平衡点
 - ✅ 关键层保持 FP16/FP32
+
+**5. 数据质量陷阱**
+- ❌ 使用未清洗的原始数据
+- ✅ 建立数据质量评估流程
+- ✅ 实施数据去重和过滤
+
+**6. 超参数选择**
+- ❌ 使用默认参数不调优
+- ✅ 使用 wandb 或 tensorboard 进行实验追踪
+- ✅ 网格搜索或贝叶斯优化寻找最优参数
+
+**7. 推理时的不一致**
+- ❌ 训练时使用特定格式，推理时格式不一致
+- ✅ 确保推理时应用相同的聊天模板
+- ✅ 验证推理参数（temperature, top_p）的一致性
+
+**8. 分布式训练陷阱**
+- ❌ 忽略梯度同步问题
+- ✅ 使用 DistributedDataParallel
+- ✅ 注意随机种子的设置
 
 ## 📚 资源索引
 
@@ -303,6 +772,21 @@ mixed_dataset = original_data.sample(0.1) + new_domain_data
    - 链接：https://arxiv.org/abs/2307.09288
    - 核心贡献：开源可商用的大模型及微调方法
 
+6. **Direct Preference Optimization: Your Language Model is Secretly a Reward Model** (2023)
+   - 作者：Rafael Rafailov et al., Stanford
+   - 链接：https://arxiv.org/abs/2305.18290
+   - 核心贡献：DPO 算法，无需奖励模型即可进行人类偏好优化
+
+7. **Full Parameter Fine-tuning for Large Language Models with Limited Resources** (2023)
+   - 作者：Kai Lv et al., Fudan University
+   - 链接：https://arxiv.org/abs/2306.09782
+   - 核心贡献：LISA 方法，有限资源下的全参数微调
+
+8. **Scaling Laws for Reward Model Overoptimization** (2022)
+   - 作者：Leo Gao et al., Anthropic
+   - 链接：https://arxiv.org/abs/2210.10760
+   - 核心贡献：深入分析 RLHF 中的奖励模型优化问题
+
 ### 技术文档
 
 1. **Hugging Face PEFT 文档**
@@ -320,6 +804,14 @@ mixed_dataset = original_data.sample(0.1) + new_domain_data
 4. **Axolotl**
    - https://github.com/OpenAccess-AI-Collective/axolotl
    - 简化大模型微调的工具
+
+5. **Hugging Face Alignment Handbook**
+   - https://github.com/huggingface/alignment-handbook
+   - 对齐技术的完整指南
+
+6. **DeepSpeed 文档**
+   - https://www.deepspeed.ai/
+   - 大规模分布式训练框架
 
 ### 开源项目
 
@@ -339,6 +831,18 @@ mixed_dataset = original_data.sample(0.1) + new_domain_data
    - https://modal.com/
    - 云端微调部署平台
 
+5. **Firefly**
+   - https://github.com/yangjianxin1/Firefly
+   - 中文大模型微调工具
+
+6. **SWIFT**
+   - https://github.com/modelscope/swift
+   - 阿里巴巴 ModelScope 轻量级微调框架
+
+7. **MergeKit**
+   - https://github.com/arcee-ai/mergekit
+   - 模型合并工具包
+
 ### 数据集资源
 
 1. **Awesome Instruction Datasets**
@@ -352,6 +856,14 @@ mixed_dataset = original_data.sample(0.1) + new_domain_data
 3. **ShareGPT**
    - https://sharegpt.com/
    - 真实对话数据
+
+4. **UltraChat**
+   - https://github.com/thunlp/UltraChat
+   - 大规模高质量多轮对话数据
+
+5. **CodeAlpaca**
+   - https://github.com/sahil280114/codealpaca
+   - 代码生成指令数据集
 
 ## 🔗 关联知识
 
@@ -416,6 +928,16 @@ graph TD
 - 数据：低资源语言语料
 - 模型：mBERT/XLM + 微调
 - 输出：多语言 NLP 服务
+
+**项目4：个性化写作助手**
+- 数据：特定作者文本 + 写作风格示例
+- 模型：GPT-J/Neo + LoRA
+- 输出：风格迁移写作工具
+
+**项目5：奖励模型训练**
+- 数据：人工标注的偏好数据
+- 模型：BERT/RoBERTa 作为基础
+- 输出：用于 RLHF 的奖励模型
 
 ## 🔄 维护说明
 

@@ -370,6 +370,97 @@ def generate_response(prompt: str):
     return llm.generate(prompt)
 ```
 
+**6. 量化模型部署**
+
+```python
+# 使用 AutoGPTQ 部署 4-bit 量化模型
+from auto_gptq import AutoGPTQForCausalLM
+from transformers import AutoTokenizer
+
+# 加载量化模型
+model = AutoGPTQForCausalLM.from_quantized(
+    "TheBloke/Llama-2-7B-GPTQ",
+    device_map="auto",
+    use_triton=True,
+    quantize_config=None
+)
+
+tokenizer = AutoTokenizer.from_pretrained("TheBloke/Llama-2-7B-GPTQ")
+
+# 推理
+prompt = "解释机器学习的基本概念"
+inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+
+output = model.generate(
+    **inputs,
+    max_new_tokens=256,
+    temperature=0.7,
+    do_sample=True
+)
+
+print(tokenizer.decode(output[0], skip_special_tokens=True))
+```
+
+**7. 流式输出实现**
+
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from vllm import LLM, SamplingParams
+import asyncio
+
+app = FastAPI()
+
+class StreamingLLM:
+    def __init__(self):
+        self.llm = LLM(model="meta-llama/Llama-2-7b-hf")
+    
+    async def generate_stream(self, prompt: str):
+        """流式生成文本"""
+        # 使用 vLLM 的异步生成接口
+        from vllm import AsyncLLMEngine
+        
+        engine = AsyncLLMEngine.from_engine_args(
+            engine_args=EngineArgs(
+                model="meta-llama/Llama-2-7b-hf"
+            )
+        )
+        
+        sampling_params = SamplingParams(
+            temperature=0.7,
+            max_tokens=512
+        )
+        
+        # 生成唯一请求 ID
+        request_id = str(uuid.uuid4())
+        
+        # 添加请求到引擎
+        engine.add_request(request_id, prompt, sampling_params)
+        
+        # 流式输出结果
+        while True:
+            request_outputs = engine.step()
+            for request_output in request_outputs:
+                if request_output.request_id == request_id:
+                    text = request_output.outputs[0].text
+                    yield f"data: {json.dumps({'text': text})}\n\n"
+                    
+                    if request_output.finished:
+                        yield f"data: {json.dumps({'done': True})}\n\n"
+                        return
+            
+            await asyncio.sleep(0.01)
+
+streaming_llm = StreamingLLM()
+
+@app.post("/v1/completions/stream")
+async def stream_completion(request: InferenceRequest):
+    return StreamingResponse(
+        streaming_llm.generate_stream(request.prompt),
+        media_type="text/event-stream"
+    )
+```
+
 ### 最佳实践
 
 **1. 模型路由策略**
@@ -453,6 +544,80 @@ class SafetyGuard:
         return True, "OK"
 ```
 
+**4. 负载均衡与故障转移**
+
+```python
+import random
+from typing import List
+
+class LoadBalancer:
+    def __init__(self, endpoints: List[dict]):
+        """
+        endpoints: [{"url": "...", "weight": 1, "healthy": True}]
+        """
+        self.endpoints = endpoints
+    
+    def get_endpoint(self) -> str:
+        """加权随机选择健康端点"""
+        healthy = [e for e in self.endpoints if e["healthy"]]
+        if not healthy:
+            raise Exception("No healthy endpoints available")
+        
+        total_weight = sum(e["weight"] for e in healthy)
+        r = random.uniform(0, total_weight)
+        
+        for endpoint in healthy:
+            r -= endpoint["weight"]
+            if r <= 0:
+                return endpoint["url"]
+        
+        return healthy[0]["url"]
+    
+    def health_check(self):
+        """定期健康检查"""
+        for endpoint in self.endpoints:
+            try:
+                response = requests.get(f"{endpoint['url']}/health", timeout=5)
+                endpoint["healthy"] = response.status_code == 200
+            except:
+                endpoint["healthy"] = False
+```
+
+**5. 提示词缓存优化**
+
+```python
+import hashlib
+from functools import lru_cache
+
+class PromptCache:
+    def __init__(self, redis_client):
+        self.redis = redis_client
+        self.ttl = 3600  # 缓存1小时
+    
+    def _get_cache_key(self, prompt: str, model: str, params: dict) -> str:
+        """生成缓存键"""
+        content = f"{prompt}:{model}:{sorted(params.items())}"
+        return f"llm_cache:{hashlib.sha256(content.encode()).hexdigest()}"
+    
+    def get(self, prompt: str, model: str, params: dict):
+        """获取缓存结果"""
+        key = self._get_cache_key(prompt, model, params)
+        cached = self.redis.get(key)
+        if cached:
+            return json.loads(cached)
+        return None
+    
+    def set(self, prompt: str, model: str, params: dict, result: dict):
+        """设置缓存"""
+        key = self._get_cache_key(prompt, model, params)
+        self.redis.setex(key, self.ttl, json.dumps(result))
+    
+    def invalidate(self, pattern: str = "llm_cache:*"):
+        """使缓存失效"""
+        for key in self.redis.scan_iter(match=pattern):
+            self.redis.delete(key)
+```
+
 ### 常见陷阱
 
 **1. 单点故障**
@@ -475,6 +640,16 @@ class SafetyGuard:
 - ❌ 无输入过滤
 - ✅ 多层次安全防护
 - ✅ 定期安全审计
+
+**5. 冷启动问题**
+- ❌ 模型首次加载时间长
+- ✅ 使用预加载和预热
+- ✅ 实施自动扩缩容
+
+**6. 上下文窗口溢出**
+- ❌ 不检查输入长度
+- ✅ 实施动态截断策略
+- ✅ 使用文本压缩技术
 
 ## 📚 资源索引
 
@@ -499,6 +674,16 @@ class SafetyGuard:
    - 链接：https://arxiv.org/abs/2401.10774
    - 核心贡献：投机解码框架
 
+5. **Fast Inference from Transformers via Speculative Decoding** (2022)
+   - 作者：Yaniv Leviathan et al., Google
+   - 链接：https://arxiv.org/abs/2211.17192
+   - 核心贡献：投机解码加速推理
+
+6. **FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness** (2022)
+   - 作者：Tri Dao et al., Stanford
+   - 链接：https://arxiv.org/abs/2205.14135
+   - 核心贡献：高效注意力计算
+
 ### 技术文档
 
 1. **vLLM 官方文档**
@@ -516,6 +701,10 @@ class SafetyGuard:
 4. **OpenAI Production Best Practices**
    - https://platform.openai.com/docs/guides/production-best-practices
    - 生产环境最佳实践
+
+5. **Kubernetes for LLMs**
+   - https://github.com/kserve/kserve
+   - KServe 模型服务框架
 
 ### 开源项目
 
@@ -539,6 +728,10 @@ class SafetyGuard:
    - https://github.com/BerriAI/litellm
    - 统一多模型 API 调用
 
+6. **Ollama**
+   - https://github.com/ollama/ollama
+   - 本地运行大模型的简单方案
+
 ### 云服务商解决方案
 
 1. **AWS SageMaker**
@@ -552,6 +745,10 @@ class SafetyGuard:
 3. **Google Vertex AI**
    - 模型调优和部署
    - 评估和监控工具
+
+4. **Replicate**
+   - https://replicate.com/
+   - 云端模型托管平台
 
 ## 🔗 关联知识
 
@@ -617,6 +814,11 @@ graph TD
 - 提示词版本管理
 - 效果评估
 - 自动切换
+
+**项目4：LLM 可观测性平台**
+- 实时指标收集
+- 成本分析
+- 质量监控
 
 ## 🔄 维护说明
 
