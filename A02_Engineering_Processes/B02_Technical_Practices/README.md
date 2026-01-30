@@ -1,4 +1,4 @@
-# B02_Technical_Practices
+# B02 Technical Practices
 
 **所属领域**: [A02_Engineering_Processes](../readme.md)
 **创建日期**: 2026-01-30
@@ -6,170 +6,279 @@
 
 ## 📋 子领域定位
 
-工程技术实践与代码质量领域，涵盖代码工艺、自动化策略、文档运维等核心方向。从编码规范到CI/CD流水线，构建高质量软件交付体系，提升团队工程效率与代码可维护性。
+技术实践是软件工程的核心能力，决定了代码质量、系统可维护性和团队生产效率。随着软件系统日益复杂，工程团队需要掌握从代码编写到系统设计的全方位技术实践，包括代码规范、重构技巧、自动化策略和文档管理。
 
-**核心价值**：
-- 建立统一的代码质量标准
-- 提升开发效率与交付速度
-- 降低技术债务与维护成本
-- 促进知识沉淀与团队协作
+本领域涵盖三大核心方向：代码工艺（Clean Code、重构、设计模式）、自动化策略（测试自动化、构建自动化、部署自动化）和文档运维（架构决策记录、API 文档、知识库管理）。现代工程师应当将质量内建于开发过程的每个环节，实现"一次做对"的工程文化。
+
+**核心关注点**：
+- **代码工艺**: Clean Code 原则、重构技术、代码审查、技术债务管理
+- **自动化策略**: TDD/BDD、自动化测试金字塔、持续集成、IaC
+- **文档运维**: ADR 架构决策、文档即代码、API 文档、知识管理
 
 ## 🗂️ 专项列表
 
 ### [C01. Code_Craftsmanship](C01_Code_Craftsmanship/README.md)
 
-代码工艺关注代码质量与可维护性，涵盖编码规范、代码审查、重构技巧、设计原则（SOLID）等核心实践。包括静态代码分析、代码度量、技术债务管理等工程化方法，以及Clean Code、TDD等开发理念。
+代码工艺关注如何编写高质量、可维护的代码。本专项深入探讨 Clean Code 原则（命名、函数、注释、格式）、代码重构技术（坏味道识别、重构手法）、设计模式应用和代码审查最佳实践。涵盖技术债务识别与管理、代码复杂度度量（圈复杂度、认知复杂度）和遗留代码改善策略。
 
 ### [C02. Automation_Strategy](C02_Automation_Strategy/README.md)
 
-自动化策略通过工具与流程提升效率，涵盖CI/CD流水线、自动化测试、自动化部署、基础设施即代码（IaC）等核心技术。包括GitLab CI、Jenkins、GitHub Actions等工具实践，以及质量门禁、发布策略等流程设计。
+自动化是提升工程效能的关键杠杆。本专项详解测试自动化金字塔（单元/集成/E2E 测试）、TDD/BDD 开发模式、持续集成最佳实践、以及基础设施即代码（Terraform/Pulumi/CloudFormation）。涵盖自动化测试设计原则、测试数据管理、Mock/Stub 技术和并行测试策略。
 
 ### [C03. Documentation_Ops](C03_Documentation_Ops/README.md)
 
-文档运维将文档视为代码进行管理，涵盖文档即代码（Docs as Code）、API文档生成、架构决策记录（ADR）、知识库建设等实践。包括Markdown、AsciiDoc、Swagger等工具，以及文档版本管理、自动化发布等流程。
-
-
+文档是软件系统的重要组成部分。本专项覆盖架构决策记录 (ADR) 方法论、文档即代码实践（Markdown/AsciiDoc）、API 文档工具（OpenAPI/Swagger、API Blueprint）、以及技术知识库管理。探讨文档驱动开发、文档版本控制、文档质量度量和知识共享文化。
 
 ## 🛠️ 技术栈概览
 
-### 核心技术
-- **代码质量**: 编码规范、代码审查、静态分析、代码度量、重构
-- **CI/CD**: 持续集成、持续交付、持续部署、流水线即代码
-- **自动化测试**: 单元测试、集成测试、E2E测试、性能测试、安全测试
-- **基础设施即代码**: Terraform、Ansible、CloudFormation、Pulumi
-- **版本控制**: Git工作流、分支策略、代码合并、冲突解决
-- **质量门禁**: 覆盖率检查、漏洞扫描、性能基准、合规检查
+### 代码质量工具
 
-### 工具链
-- **CI/CD平台**: GitLab CI、GitHub Actions、Jenkins、CircleCI、Travis CI
-- **代码质量**: SonarQube、ESLint、Pylint、Checkstyle、RuboCop
-- **测试框架**: Jest、Pytest、JUnit、Mocha、Cypress、Selenium
-- **代码审查**: Gerrit、Crucible、Review Board、Phabricator
-- **文档工具**: Docusaurus、MkDocs、Sphinx、GitBook、VuePress
-- **API文档**: Swagger/OpenAPI、Postman、Redoc、Stoplight
+| 工具 | 功能 | 支持语言 | 官网 |
+|------|------|----------|------|
+| **SonarQube** | 代码质量平台 | 多语言 | https://www.sonarqube.org |
+| **ESLint** | JS/TS 代码检查 | JavaScript/TypeScript | https://eslint.org |
+| **Pylint** | Python 代码检查 | Python | https://pylint.pycqa.org |
+| **RuboCop** | Ruby 代码检查 | Ruby | https://rubocop.org |
+| **Checkstyle** | Java 代码规范 | Java | https://checkstyle.org |
+| **SpotBugs** | Java Bug 检测 | Java | https://spotbugs.github.io |
 
-### 框架与库
-- **测试工具**: TestNG、RSpec、Jasmine、Karma、Puppeteer
-- **Mock工具**: Mockito、WireMock、Sinon.js、unittest.mock
-- **覆盖率**: JaCoCo、Istanbul、Coverage.py、SimpleCov
-- **性能测试**: JMeter、Gatling、Locust、k6、Artillery
-- **IaC工具**: Terraform、Ansible、Chef、Puppet、SaltStack
-- **容器化**: Docker、Docker Compose、Buildah、Kaniko
+### 测试框架
+
+| 框架 | 语言 | 类型 | 官网 |
+|------|------|------|------|
+| **JUnit** | Java | 单元测试 | https://junit.org |
+| **pytest** | Python | 单元/集成测试 | https://pytest.org |
+| **Jest** | JavaScript | 全栈测试 | https://jestjs.io |
+| **Cypress** | JavaScript | E2E 测试 | https://www.cypress.io |
+| **Playwright** | 多语言 | E2E 测试 | https://playwright.dev |
+| **Ginkgo** | Go | BDD 测试 | https://onsi.github.io/ginkgo |
+| **K6** | JavaScript | 负载测试 | https://k6.io |
+
+### 文档工具
+
+| 工具 | 用途 | 官网 |
+|------|------|------|
+| **MkDocs** | 静态文档站点 | https://www.mkdocs.org |
+| **Docusaurus** | React 文档站点 | https://docusaurus.io |
+| **VuePress** | Vue 文档站点 | https://vuepress.vuejs.org |
+| **Swagger UI** | API 文档展示 | https://swagger.io/tools/swagger-ui |
+| **Redoc** | OpenAPI 文档 | https://redocly.github.io/redoc |
+| **PlantUML** | 架构图绘制 | https://plantuml.com |
+| **Mermaid** | Markdown 图表 | https://mermaid.js.org |
 
 ## 💼 实践案例索引
 
-1. **DevOps流水线建设**
-   - CI流程：代码提交触发自动构建与测试
-   - CD流程：自动部署到测试/生产环境
-   - 质量门禁：覆盖率≥80%、无高危漏洞
+### 案例 1: Clean Code 实践指南
 
-2. **代码质量提升实践**
-   - 静态分析：SonarQube集成到CI流水线
-   - 代码审查：强制Code Review + 自动化检查
-   - 技术债务：定期重构与代码清理
+**命名规范**:
+```java
+// ❌ 不好的命名
+int d; //  elapsed time in days
+void getData();
+List<int[]> list1;
 
-3. **自动化测试体系**
-   - 单元测试：Jest + 覆盖率报告
-   - 集成测试：Testcontainers模拟依赖
-   - E2E测试：Cypress自动化UI测试
+// ✅ 好的命名
+int elapsedTimeInDays;
+void fetchUserProfile();
+List<Cell[]> gameBoardRows;
+```
 
-4. **文档即代码实践**
-   - API文档：OpenAPI规范 + Swagger UI
-   - 架构文档：ADR记录架构决策
-   - 知识库：Docusaurus构建团队Wiki
+**函数设计**:
+```java
+// ❌ 函数过长，职责过多
+public void processUserData() {
+    // 200+ lines of code
+    // validation + database + email + logging
+}
 
-5. **基础设施即代码**
-   - 环境管理：Terraform管理云资源
-   - 配置管理：Ansible自动化配置
-   - 版本控制：基础设施代码Git管理
+// ✅ 单一职责，清晰命名
+public User createUser(UserRegistrationRequest request) {
+    validateRegistration(request);
+    User user = userRepository.save(toUser(request));
+    eventPublisher.publish(new UserCreatedEvent(user));
+    return user;
+}
+```
 
-## 🔗 关联知识
+**代码审查清单**:
+- [ ] 命名是否清晰表达意图？
+- [ ] 函数是否只做一件事？
+- [ ] 是否有重复代码？
+- [ ] 注释是否必要且最新？
+- [ ] 错误处理是否完善？
+- [ ] 单元测试是否覆盖？
+
+### 案例 2: 测试自动化金字塔
+
+**测试分层策略**:
+```
+        /\
+       /  \
+      / E2E\      <- 少量 (10%) - 用户旅程测试
+     /________\
+    /          \
+   / Integration \  <- 中量 (30%) - 服务集成测试
+  /______________\
+ /                \
+/     Unit Tests   \ <- 大量 (60%) - 快速反馈
+/____________________\
+```
+
+**单元测试示例** (pytest):
+```python
+# test_calculator.py
+import pytest
+from calculator import Calculator
+
+class TestCalculator:
+    @pytest.fixture
+    def calc(self):
+        return Calculator()
+    
+    def test_add_two_numbers(self, calc):
+        # Arrange
+        a, b = 2, 3
+        
+        # Act
+        result = calc.add(a, b)
+        
+        # Assert
+        assert result == 5
+    
+    @pytest.mark.parametrize("a,b,expected", [
+        (1, 1, 2),
+        (0, 0, 0),
+        (-1, 1, 0),
+        (100, 200, 300),
+    ])
+    def test_add_various_numbers(self, calc, a, b, expected):
+        assert calc.add(a, b) == expected
+```
+
+**TDD 循环**:
+```
+┌─────────────────────────────────────────────┐
+│              TDD 红绿重构循环                │
+│                                             │
+│  ┌──────┐    ┌──────┐    ┌──────┐         │
+│  │  Red │ → │ Green│ → │Refactor│         │
+│  │编写失败测试│  │ 编写最小代码 │  │ 改进代码质量 │         │
+│  └──────┘    └──────┘    └──────┘         │
+│       ↑_________________________|         │
+└─────────────────────────────────────────────┘
+```
+
+### 案例 3: ADR 架构决策记录
+
+**ADR 模板**:
+```markdown
+# ADR-001: 采用微服务架构
+
+## 状态
+Accepted
+
+## 背景
+当前单体应用面临扩展性和维护性挑战，团队规模从 10 人增长到 50 人。
+
+## 决策
+采用微服务架构，服务按业务领域拆分。
+
+## 后果
+### 正面
+- 团队可独立部署和扩展
+- 技术栈可按服务选择
+- 故障隔离性增强
+
+### 负面
+- 分布式系统复杂性增加
+- 需要服务网格和可观测性投入
+- 数据一致性挑战
+
+## 替代方案
+- 模块化单体：短期内可行，长期仍有瓶颈
+- Serverless：不适合长连接和复杂业务逻辑
+
+## 参考
+- https://martinfowler.com/articles/microservices.html
+```
+
+**ADR 管理流程**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     ADR 生命周期                             │
+├─────────┬─────────┬─────────┬─────────┬─────────────────────┤
+│ Proposed│ 讨论评审 │ Accepted│ Deprecated│ Superseded        │
+│  提出    │  收集反馈 │  采纳   │   弃用    │  被新版本替代       │
+└─────────┴─────────┴─────────┴─────────┴─────────────────────┘
+```
+
+## 🔗 知识关联图谱
 
 ```mermaid
-graph LR
-    B[B02_Technical_Practices]
-
-    %% 工程流程
-    B --> A01[A02_Engineering_Processes/B03_DevOps_Automation]
-    B --> A02[A02_Engineering_Processes/B04_Observability]
-
-    %% 架构设计
-    B --> A03[A03_Design_Architecture/B02_Design_Patterns]
-    B --> A04[A03_Design_Architecture/B01_Arch_Styles]
-
-    %% 质量保障
-    B --> A05[A04_Security_Quality/B03_Testing_Strategies]
-    B --> A06[A04_Security_Quality/B01_Information_Security]
-
-    %% 基础设施
-    B --> A07[A01_Infrastructure/B09_Virtualization]
-    B --> A08[A01_Infrastructure/B10_Cloud_Platforms]
+graph TB
+    B[B02 Technical Practices]
+    
+    %% 同层关联
+    B -->|自动化测试| B01[A02/B01 SDLC Frameworks<br/>SDLC 框架]
+    B -->|技术债务| B03[A02/B03 Risk Governance<br/>风险治理]
+    
+    %% 专项关联
+    B --> C01[C01 Code Craftsmanship]
+    B --> C02[C02 Automation Strategy]
+    B --> C03[C03 Documentation Ops]
+    
+    C01 -->|代码可测试性| C02
+    C02 -->|测试文档化| C03
+    C01 -->|代码即文档| C03
+    
+    %% 跨层关联
+    B -.->|设计模式| A03[A03 Design Architecture<br/>架构设计]
+    B -.->|代码安全| A04[A04 Security Quality<br/>安全质量]
+    B -.->|工程文化| A06[A06 Technical Intuition<br/>技术直觉]
 ```
 
 ## 📖 学习资源
 
 ### 推荐书籍
-1. **《代码整洁之道》** - Robert C. Martin
-   - Clean Code经典著作，代码质量圣经
 
-2. **《重构：改善既有代码的设计》** - Martin Fowler
-   - 重构技巧与模式系统讲解
-
-3. **《持续交付》** - Jez Humble
-   - CI/CD理论与实践权威指南
-
-4. **《测试驱动开发》** - Kent Beck
-   - TDD方法论与实践
-
-5. **《凤凰项目》** - Gene Kim
-   - DevOps理念小说化呈现
-
-6. **《Google软件工程》** - Titus Winters等
-   - Google工程实践经验总结
-
-7. **《Terraform: Up & Running》** - Yevgeniy Brikman
-   - IaC实战指南
+| 书名 | 作者 | 说明 |
+|------|------|------|
+| 《Clean Code》 | Robert C. Martin | 代码整洁之道 |
+| 《Refactoring》 | Martin Fowler | 重构改善代码 |
+| 《Test-Driven Development》 | Kent Beck | TDD 经典 |
+| 《Working Effectively with Legacy Code》 | Michael Feathers | 遗留代码处理 |
+| 《Documentation as Code》 | Docs-as-code Community | 文档即代码 |
 
 ### 在线课程
-1. **Clean Code** - Udemy
-   - Robert C. Martin代码整洁之道课程
 
-2. **CI/CD with GitLab** - GitLab
-   - GitLab CI/CD官方教程
+| 课程 | 平台 | 链接 |
+|------|------|------|
+| Clean Code | Udemy | https://www.udemy.com/course/writing-clean-code |
+| Test-Driven Development | Coursera | https://www.coursera.org/learn/test-driven-development |
+| Software Testing | Coursera | https://www.coursera.org/specializations/software-testing |
 
-3. **Test Automation University** - Applitools
-   - 自动化测试免费课程
+### 技术资源
 
-4. **Infrastructure as Code** - Pluralsight
-   - Terraform与Ansible实战
+| 资源 | 链接 | 说明 |
+|------|------|------|
+| Clean Code Cheat Sheet | https://www.planetgeek.ch/wp-content/uploads/2014/11/Clean-Code-V2.4.pdf | 代码规范速查 |
+| Refactoring Guru | https://refactoring.guru | 重构技术详解 |
+| Testing Patterns | https://martinfowler.com/testing | 测试模式 |
+| ADR 组织 | https://adr.github.io | ADR 方法论 |
 
-5. **DevOps Foundations** - LinkedIn Learning
-   - DevOps基础与最佳实践
+### 开源项目
 
-### 技术博客
-1. **Martin Fowler's Blog** - https://martinfowler.com
-   - 重构、CI/CD、微服务等深度文章
-
-2. **ThoughtWorks Insights** - https://www.thoughtworks.com/insights
-   - 技术雷达与工程实践
-
-3. **Google Testing Blog** - https://testing.googleblog.com
-   - Google测试工程实践
-
-4. **Atlassian DevOps Blog** - https://www.atlassian.com/devops
-   - DevOps工具与实践
-
-5. **GitLab Blog** - https://about.gitlab.com/blog
-   - CI/CD与DevOps最佳实践
-
-6. **HashiCorp Blog** - https://www.hashicorp.com/blog
-   - IaC与云基础设施
-
-7. **Continuous Delivery** - https://continuousdelivery.com
-   - Jez Humble的持续交付博客
+| 项目 | GitHub | 说明 |
+|------|--------|------|
+| JUnit | https://github.com/junit-team/junit5 | Java 测试框架 |
+| pytest | https://github.com/pytest-dev/pytest | Python 测试框架 |
+| Jest | https://github.com/jestjs/jest | JS 测试框架 |
+| MkDocs | https://github.com/mkdocs/mkdocs | 文档站点生成 |
+| Docusaurus | https://github.com/facebook/docusaurus | React 文档框架 |
 
 ## 🔄 维护说明
 
-- **内容审查**: 每月检查链接有效性
-- **更新机制**: 发现新技术或最佳实践时及时更新
-- **质量标准**: 确保所有专项主题内容完整且准确
+- **内容审查**: 每半年更新工具链版本和最佳实践
+- **更新机制**: 跟踪 Clean Code 社区和测试技术发展
+- **质量标准**: 所有代码示例需经过编译验证
+- **贡献方式**: 欢迎提交代码审查清单和重构案例
